@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
-const API = "http://localhost:8080/api/customer"
+const API = "http://gold-bobcats-retire.loca.lt/api/customer"
 
 const inputStyle = {
   padding: "10px", margin: "5px", borderRadius: "5px",

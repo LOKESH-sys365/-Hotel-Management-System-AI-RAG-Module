@@ -8,7 +8,7 @@ function Login() {
   const navigate = useNavigate()
 
   const login = async () => {
-    const response = await fetch("http://localhost:8080/api/auth/login", {
+    const response = await fetch("http://gold-bobcats-retire.loca.lt/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
