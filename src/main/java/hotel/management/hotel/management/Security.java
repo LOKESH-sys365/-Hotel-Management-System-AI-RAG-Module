@@ -23,6 +23,11 @@ public class Security {
                 .cors(cors -> cors.configurationSource(request ->{
                     var config = new CorsConfiguration();
                     //config.setAllowedOrigins(List.of("http://localhost:5173"));
+                    //config.setAllowedOrigins(
+                            //"http://localhost:5173",
+                            //"https://peaceful-pixie-f3e81b.netlify.app",
+                            //"https://fifty-yaks-hear.loca.lt"  // optional
+                   // )
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
@@ -30,6 +35,7 @@ public class Security {
                     return config;
 
                 }))
+
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth ->auth
                         .requestMatchers("/api/auth/login").permitAll()
