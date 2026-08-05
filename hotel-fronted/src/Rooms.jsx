@@ -14,7 +14,7 @@ function Rooms() {
   }, [])
 
   const fetchRooms = async () => {
-    const response = await fetch("http://gold-bobcats-retire.loca.lt\n/api/rooms", {
+    const response = await fetch("https://rotten-hats-crash.loca.lt/api/rooms", {
       headers: { "Authorization": "Bearer " + token }
     })
     const data = await response.json()
@@ -22,7 +22,7 @@ function Rooms() {
   }
 
   const addRoom = async () => {
-    await fetch("http://gold-bobcats-retire.loca.lt/api/rooms", {
+    await fetch("https://rotten-hats-crash.loca.lt/api/rooms", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
