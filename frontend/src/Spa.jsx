@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { API_BASE_URL } from "./config"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ArrowLeft, Sparkles, Pencil, Trash2, Loader2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
 
-const API = "https://rotten-hats-crash.loca.lt/api/spa"
-
-const inputStyle = {
-  padding: "10px", margin: "5px", borderRadius: "5px",
-  border: "none", background: "#0f3460", color: "white", width: "180px"
-}
-const btnStyle = (bg = "#e94560") => ({
-  padding: "8px 14px", background: bg, color: "white",
-  border: "none", borderRadius: "5px", cursor: "pointer", margin: "3px"
-})
+const API = `${API_BASE_URL}/api/spa`
 
 const emptyForm = { serviceName: "", price: "", Duration: "", isAvailable: true }
 
@@ -20,6 +18,7 @@ function Spa() {
   const [editId, setEditId] = useState(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
   const token = localStorage.getItem("token")
 
@@ -43,10 +42,7 @@ function Spa() {
     }
   }
 
-  const handleChange = e => {
-    const val = e.target.name === "isAvailable" ? e.target.checked : e.target.value
-    setForm({ ...form, [e.target.name]: val })
-  }
+  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
 
   const validate = () => {
     if (!form.serviceName.trim()) return "Service name is required"
@@ -59,6 +55,7 @@ function Spa() {
     const err = validate()
     if (err) { setError(err); return }
     setError("")
+    setSaving(true)
     try {
       const method = editId ? "PUT" : "POST"
       const body = editId
@@ -71,6 +68,8 @@ function Spa() {
       fetchServices()
     } catch {
       setError("Failed to save service.")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -90,73 +89,141 @@ function Spa() {
     }
   }
 
+  const cancelEdit = () => {
+    setEditId(null)
+    setForm(emptyForm)
+    setError("")
+  }
+
+  const inputClass = "bg-slate-950/60 border-slate-800 text-white placeholder:text-slate-500 w-44"
+
   return (
-    <div style={{ background: "#1a1a2e", minHeight: "100vh", color: "white", padding: "20px" }}>
-      <button onClick={() => navigate("/dashboard")} style={btnStyle()}>← Back</button>
-      <h2 style={{ color: "#e94560", margin: "15px 0" }}>💆 Spa & Amenities</h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
+      <Button
+        onClick={() => navigate("/dashboard")}
+        variant="outline"
+        className="border-slate-700 text-slate-300 hover:bg-slate-800 mb-6"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back
+      </Button>
+
+      <div className="flex items-center gap-2 mb-6">
+        <Sparkles className="h-6 w-6 text-purple-500" />
+        <h2 className="text-2xl font-semibold text-white">Spa &amp; Amenities</h2>
+      </div>
 
       {/* Form */}
-      <div style={{ background: "#16213e", padding: "20px", borderRadius: "10px", marginBottom: "20px" }}>
-        <h3 style={{ marginBottom: "15px" }}>{editId ? "✏️ Edit Service" : "➕ Add New Service"}</h3>
-        {error && <p style={{ color: "#e94560", marginBottom: "10px" }}>⚠️ {error}</p>}
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "center" }}>
-          <input name="serviceName" placeholder="Service Name" value={form.serviceName}
-            onChange={handleChange} style={inputStyle} />
-          <input name="price" type="number" placeholder="Price (₹)" value={form.price}
-            onChange={handleChange} style={inputStyle} />
-          <input name="Duration" type="number" placeholder="Duration (mins)" value={form.Duration}
-            onChange={handleChange} style={inputStyle} />
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "8px" }}>
-            <input type="checkbox" name="isAvailable" checked={form.isAvailable}
-              onChange={handleChange} style={{ width: "16px", height: "16px" }} />
-            Available
-          </label>
-        </div>
-
-        <div style={{ marginTop: "12px" }}>
-          <button onClick={saveService} style={btnStyle()}>
-            {editId ? "Update Service" : "Add Service"}
-          </button>
-          {editId && (
-            <button onClick={() => { setEditId(null); setForm(emptyForm); setError("") }}
-              style={btnStyle("#555")}>Cancel</button>
+      <Card className="bg-slate-900/60 border-slate-800 mb-6">
+        <CardHeader>
+          <h3 className="text-white font-medium">
+            {editId ? "Edit Service" : "Add New Service"}
+          </h3>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/40 border border-red-900 rounded-lg py-2 px-3 mb-4">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
           )}
-        </div>
-      </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Input name="serviceName" placeholder="Service Name" value={form.serviceName}
+              onChange={handleChange} className={inputClass} />
+            <Input name="price" type="number" placeholder="Price (₹)" value={form.price}
+              onChange={handleChange} className={inputClass} />
+            <Input name="Duration" type="number" placeholder="Duration (mins)" value={form.Duration}
+              onChange={handleChange} className={inputClass} />
+            <label className="flex items-center gap-2 text-slate-300 text-sm">
+              <Checkbox
+                checked={form.isAvailable}
+                onCheckedChange={checked => setForm({ ...form, isAvailable: checked })}
+              />
+              Available
+            </label>
+          </div>
+
+          <div className="flex gap-3 mt-4">
+            <Button
+              onClick={saveService}
+              disabled={saving}
+              className="bg-purple-600 hover:bg-purple-500 text-white"
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editId ? (
+                "Update Service"
+              ) : (
+                "Add Service"
+              )}
+            </Button>
+            {editId && (
+              <Button
+                onClick={cancelEdit}
+                variant="outline"
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Table */}
-      <div style={{ background: "#16213e", borderRadius: "10px", overflowX: "auto" }}>
-        {loading ? (
-          <p style={{ padding: "20px", textAlign: "center" }}>Loading...</p>
-        ) : services.length === 0 ? (
-          <p style={{ padding: "20px", textAlign: "center", color: "#888" }}>No services yet. Add one above.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#0f3460" }}>
-                {["Service Name", "Price", "Duration", "Available", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "14px 12px", textAlign: "center" }}>{h}</th>
+      <Card className="bg-slate-900/60 border-slate-800">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+            </div>
+          ) : services.length === 0 ? (
+            <p className="text-center text-slate-500 py-10">No services yet. Add one above.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableHead className="text-slate-400">Service Name</TableHead>
+                  <TableHead className="text-slate-400">Price</TableHead>
+                  <TableHead className="text-slate-400">Duration</TableHead>
+                  <TableHead className="text-slate-400 text-center">Available</TableHead>
+                  <TableHead className="text-slate-400 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {services.map(s => (
+                  <TableRow key={s.id} className="border-slate-800 hover:bg-slate-800/40">
+                    <TableCell className="text-white">{s.serviceName}</TableCell>
+                    <TableCell className="text-slate-300">₹{s.price}</TableCell>
+                    <TableCell className="text-slate-300">{s.duration} mins</TableCell>
+                    <TableCell className="text-center">
+                      {s.available ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 inline" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-red-500 inline" />
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        onClick={() => startEdit(s)}
+                        variant="outline"
+                        size="sm"
+                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button onClick={() => deleteService(s.id)} variant="destructive" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {services.map(s => (
-                <tr key={s.id} style={{ borderBottom: "1px solid #0f3460" }}>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{s.serviceName}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>₹{s.price}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{s.duration} mins</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{s.available ? "✅" : "❌"}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>
-                    <button onClick={() => startEdit(s)} style={btnStyle("#0f3460")}>✏️ Edit</button>
-                    <button onClick={() => deleteService(s.id)} style={btnStyle("red")}>🗑️ Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

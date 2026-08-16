@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-
-const BASE = "http://localhost:8080"
-
-const inputStyle = {
-  padding: "10px", margin: "5px", borderRadius: "5px",
-  border: "none", background: "#0f3460", color: "white", minWidth: "180px"
-}
-const btnStyle = (bg = "#e94560") => ({
-  padding: "8px 14px", background: bg, color: "white",
-  border: "none", borderRadius: "5px", cursor: "pointer", margin: "3px"
-})
+import { API_BASE_URL } from "./config"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, ClipboardList, Trash2, Loader2, AlertTriangle } from "lucide-react"
 
 const emptyForm = {
   customerId: "", roomId: "",
@@ -26,6 +22,7 @@ function Bookings() {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
   const token = localStorage.getItem("token")
 
@@ -42,9 +39,9 @@ function Bookings() {
     setLoading(true)
     try {
       const [b, c, r] = await Promise.all([
-        fetch(`${BASE}/api/booking`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
-        fetch(`${BASE}/api/customer`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
-        fetch(`${BASE}/api/rooms`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/booking`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/customer`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/rooms`, { headers: { "Authorization": "Bearer " + token } }).then(r => r.json()),
       ])
       setBookings(b)
       setCustomers(c)
@@ -57,6 +54,7 @@ function Bookings() {
   }
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleSelectChange = (name, value) => setForm({ ...form, [name]: value })
 
   const validate = () => {
     if (!form.customerId) return "Please select a customer"
@@ -73,6 +71,7 @@ function Bookings() {
     const err = validate()
     if (err) { setError(err); return }
     setError("")
+    setSaving(true)
     try {
       const payload = {
         checkinDate: form.checkinDate,
@@ -83,7 +82,7 @@ function Bookings() {
         customer: { id: Number(form.customerId) },
         room: { id: Number(form.roomId) }
       }
-      const res = await fetch(`${BASE}/api/booking`, {
+      const res = await fetch(`${API_BASE_URL}/api/booking`, {
         method: "POST", headers: authHeaders, body: JSON.stringify(payload)
       })
       if (!res.ok) throw new Error()
@@ -91,13 +90,15 @@ function Bookings() {
       fetchAll()
     } catch {
       setError("Failed to create booking.")
+    } finally {
+      setSaving(false)
     }
   }
 
   const deleteBooking = async (id) => {
     if (!window.confirm("Delete this booking?")) return
     try {
-      await fetch(`${BASE}/api/booking/${id}`, {
+      await fetch(`${API_BASE_URL}/api/booking/${id}`, {
         method: "DELETE", headers: { "Authorization": "Bearer " + token }
       })
       fetchAll()
@@ -109,78 +110,125 @@ function Bookings() {
   const getCustomerName = (b) => b.customer?.name || "—"
   const getRoomNumber = (b) => b.room?.roomNumber || "—"
 
+  const inputClass = "bg-slate-950/60 border-slate-800 text-white placeholder:text-slate-500"
+
   return (
-    <div style={{ background: "#1a1a2e", minHeight: "100vh", color: "white", padding: "20px" }}>
-      <button onClick={() => navigate("/dashboard")} style={btnStyle()}>← Back</button>
-      <h2 style={{ color: "#e94560", margin: "15px 0" }}>📋 Bookings</h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
+      <Button
+        onClick={() => navigate("/dashboard")}
+        variant="outline"
+        className="border-slate-700 text-slate-300 hover:bg-slate-800 mb-6"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back
+      </Button>
+
+      <div className="flex items-center gap-2 mb-6">
+        <ClipboardList className="h-6 w-6 text-emerald-500" />
+        <h2 className="text-2xl font-semibold text-white">Bookings</h2>
+      </div>
 
       {/* Form */}
-      <div style={{ background: "#16213e", padding: "20px", borderRadius: "10px", marginBottom: "20px" }}>
-        <h3 style={{ marginBottom: "15px" }}>➕ New Booking</h3>
-        {error && <p style={{ color: "#e94560", marginBottom: "10px" }}>⚠️ {error}</p>}
+      <Card className="bg-slate-900/60 border-slate-800 mb-6">
+        <CardHeader>
+          <h3 className="text-white font-medium">New Booking</h3>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/40 border border-red-900 rounded-lg py-2 px-3 mb-4">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-          <select name="customerId" value={form.customerId} onChange={handleChange} style={inputStyle}>
-            <option value="">Select Customer</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>)}
-          </select>
+          <div className="flex flex-wrap gap-3">
+            <Select value={form.customerId} onValueChange={v => handleSelectChange("customerId", v)}>
+              <SelectTrigger className={`${inputClass} w-56`}>
+                <SelectValue placeholder="Select Customer" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                {customers.map(c => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name} — {c.phone}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <select name="roomId" value={form.roomId} onChange={handleChange} style={inputStyle}>
-            <option value="">Select Room</option>
-            {rooms.filter(r => r.available).map(r => (
-              <option key={r.id} value={r.id}>Room {r.roomNumber} — {r.roomType} — ₹{r.price}</option>
-            ))}
-          </select>
+            <Select value={form.roomId} onValueChange={v => handleSelectChange("roomId", v)}>
+              <SelectTrigger className={`${inputClass} w-56`}>
+                <SelectValue placeholder="Select Room" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                {rooms.filter(r => r.available).map(r => (
+                  <SelectItem key={r.id} value={String(r.id)}>
+                    Room {r.roomNumber} — {r.roomType} — ₹{r.price}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <input type="date" name="checkinDate" value={form.checkinDate}
-            onChange={handleChange} style={inputStyle} />
-          <input type="date" name="checkoutDate" value={form.checkoutDate}
-            onChange={handleChange} style={inputStyle} />
-          <input type="time" name="checkinTime" placeholder="Check-in Time"
-            value={form.checkinTime} onChange={handleChange} style={inputStyle} />
-          <input type="time" name="checkoutTime" placeholder="Check-out Time"
-            value={form.checkoutTime} onChange={handleChange} style={inputStyle} />
-          <input type="number" name="totalprice" placeholder="Total Price (₹)"
-            value={form.totalprice} onChange={handleChange} style={inputStyle} />
-        </div>
+            <Input type="date" name="checkinDate" value={form.checkinDate}
+              onChange={handleChange} className={`${inputClass} w-44`} />
+            <Input type="date" name="checkoutDate" value={form.checkoutDate}
+              onChange={handleChange} className={`${inputClass} w-44`} />
+            <Input type="time" name="checkinTime" value={form.checkinTime}
+              onChange={handleChange} className={`${inputClass} w-36`} />
+            <Input type="time" name="checkoutTime" value={form.checkoutTime}
+              onChange={handleChange} className={`${inputClass} w-36`} />
+            <Input type="number" name="totalprice" placeholder="Total Price (₹)"
+              value={form.totalprice} onChange={handleChange} className={`${inputClass} w-40`} />
+          </div>
 
-        <button onClick={createBooking} style={{ ...btnStyle(), marginTop: "10px" }}>
-          Create Booking
-        </button>
-      </div>
+          <Button
+            onClick={createBooking}
+            disabled={saving}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white mt-4"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Booking"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Table */}
-      <div style={{ background: "#16213e", borderRadius: "10px", overflowX: "auto" }}>
-        {loading ? (
-          <p style={{ padding: "20px", textAlign: "center" }}>Loading...</p>
-        ) : bookings.length === 0 ? (
-          <p style={{ padding: "20px", textAlign: "center", color: "#888" }}>No bookings yet.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#0f3460" }}>
-                {["Customer", "Room", "Check-in", "Check-out", "Total Price", "Action"].map(h => (
-                  <th key={h} style={{ padding: "14px 12px", textAlign: "center" }}>{h}</th>
+      <Card className="bg-slate-900/60 border-slate-800">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+            </div>
+          ) : bookings.length === 0 ? (
+            <p className="text-center text-slate-500 py-10">No bookings yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableHead className="text-slate-400">Customer</TableHead>
+                  <TableHead className="text-slate-400">Room</TableHead>
+                  <TableHead className="text-slate-400">Check-in</TableHead>
+                  <TableHead className="text-slate-400">Check-out</TableHead>
+                  <TableHead className="text-slate-400">Total Price</TableHead>
+                  <TableHead className="text-slate-400 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bookings.map(b => (
+                  <TableRow key={b.id} className="border-slate-800 hover:bg-slate-800/40">
+                    <TableCell className="text-white">{getCustomerName(b)}</TableCell>
+                    <TableCell className="text-slate-300">{getRoomNumber(b)}</TableCell>
+                    <TableCell className="text-slate-300">{b.checkinDate}</TableCell>
+                    <TableCell className="text-slate-300">{b.checkoutDate}</TableCell>
+                    <TableCell className="text-slate-300">₹{b.totalprice}</TableCell>
+                    <TableCell className="text-right">
+                      <Button onClick={() => deleteBooking(b.id)} variant="destructive" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map(b => (
-                <tr key={b.id} style={{ borderBottom: "1px solid #0f3460" }}>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{getCustomerName(b)}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{getRoomNumber(b)}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{b.checkinDate}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>{b.checkoutDate}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>₹{b.totalprice}</td>
-                  <td style={{ padding: "13px", textAlign: "center" }}>
-                    <button onClick={() => deleteBooking(b.id)} style={btnStyle("red")}>🗑️ Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
