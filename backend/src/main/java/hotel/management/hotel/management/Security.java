@@ -26,7 +26,7 @@ public class Security {
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
-                    config.setAllowedOrigins(List.of("http://localhost:5173","https://peaceful-pixie-f3e81b.netlify.app"));
+                    config.setAllowedOrigins(List.of("http://localhost:5173","https://lustrous-tulumba-ab20c8.netlify.app"));
                     return config;
 
                 }))
