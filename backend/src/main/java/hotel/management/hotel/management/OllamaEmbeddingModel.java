@@ -24,6 +24,7 @@ public class OllamaEmbeddingModel {
     public float[] getEmbedding(String text) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setBearerAuth(hfApiKey);
 
         Map<String, Object> requestBody = new HashMap<>();
