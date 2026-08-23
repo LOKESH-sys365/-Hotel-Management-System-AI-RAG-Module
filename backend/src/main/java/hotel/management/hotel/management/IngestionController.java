@@ -1,6 +1,7 @@
 package hotel.management.hotel.management;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -18,14 +19,18 @@ public class IngestionController {
     private TextChunker textChunker;
 
     @PostMapping("/text")
-    public String ingestText(@RequestBody IngestRequest request) {
-        List<String> chunks = textChunker.chunk(request.getContent());
+    public ResponseEntity<String> ingestText(@RequestBody IngestRequest request) {
+        try {
+            List<String> chunks = textChunker.chunk(request.getContent());
 
-        for (String chunk : chunks) {
-            float[] embedding = embeddingModel.getEmbedding(chunk);
-            vectorService.saveEmbedding(request.getUserId(), chunk, embedding, "{}");
+            for (String chunk : chunks) {
+                float[] embedding = embeddingModel.getEmbedding(chunk);
+                vectorService.saveEmbedding(request.getUserId(), chunk, embedding, "{}");
+            }
+
+            return ResponseEntity.ok("Ingested " + chunks.size() + " chunks successfully");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
-
-        return "Ingested " + chunks.size() + " chunks successfully";
     }
 }
