@@ -1,16 +1,12 @@
 package hotel.management.hotel.management;
 
-import org.hibernate.sql.Insert;
-import org.hibernate.sql.ast.tree.insert.Values;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCallback;
-import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.stereotype.Component;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.List;
 
 
@@ -41,8 +37,12 @@ public class VectorRespository {
 
         });
     }
+    public void deleteBySource(Long userId, String source) {
+        String sql = "DELETE FROM ai_documents WHERE user_id=? AND metadata->>'source'=?";
+        jdbcTemplate.update(sql, userId, source);
+    }
 
-    public List<String> searchSimilar(float[] queryEmbedding, Long userId, int limit) {
+    public List<String> searchSimilar(float @NonNull [] queryEmbedding, Long userId, int limit) {
         String sql = "SELECT content FROM ai_documents WHERE user_id=? ORDER BY embedding <=> ?::vector LIMIT ?";
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < queryEmbedding.length; i++) {

@@ -18,6 +18,9 @@ public class VectorService {
     public List<String> searchSimilar(float[] queryEmbedding, Long userId, int limit) {
         return vectorRespository.searchSimilar(queryEmbedding, userId, limit);
     }
+    public void deleteBySource(Long userId, String source) {
+        vectorRespository.deleteBySource(userId, source);
+    }
 
 }
 
