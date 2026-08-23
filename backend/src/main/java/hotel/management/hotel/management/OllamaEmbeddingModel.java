@@ -18,8 +18,8 @@ public class OllamaEmbeddingModel {
     @Value("${huggingface.api.key}")
     private String hfApiKey;
 
-    private final String embedUrl = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2";
-    private final String generateUrl = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Coder-1.5B-Instruct";
+    private final String embedUrl = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
+    private final String generateUrl = "https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-1.5B-Instruct";
 
     public float[] getEmbedding(String text) {
         HttpHeaders headers = new HttpHeaders();
