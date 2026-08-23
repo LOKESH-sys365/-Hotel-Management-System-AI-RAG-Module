@@ -1,6 +1,7 @@
 package hotel.management.hotel.management;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -58,16 +59,16 @@ public class OllamaEmbeddingModel {
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<JsonNode> response = restTemplate.exchange(
-                generateUrl, HttpMethod.POST, request, JsonNode.class
+        ResponseEntity<String> response = restTemplate.exchange(
+                generateUrl, HttpMethod.POST, request, String.class
         );
 
-        JsonNode body = response.getBody();
-        if (body != null && body.has("choices")) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode body = mapper.readTree(response.getBody());
             return body.get("choices").get(0).get("message").get("content").asText();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse HuggingFace response: " + e.getMessage());
         }
-        throw new RuntimeException("Failed to get response from HuggingFace");
     }
 }
-
-
