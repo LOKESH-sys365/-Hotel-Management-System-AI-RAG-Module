@@ -5,6 +5,7 @@ import Rooms from "./Rooms"
 import Customers from "./Customers"
 import Bookings from "./Bookings"
 import Spa from "./Spa"
+import Chat from "./Chat"
 
 // Protects routes — redirects to login if no token found
 function PrivateRoute({ children }) {
@@ -33,6 +34,7 @@ function App() {
         <Route path="/spa" element={
           <PrivateRoute><Spa /></PrivateRoute>
         } />
+        <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
 
         {/* Catch-all — redirect unknown routes to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

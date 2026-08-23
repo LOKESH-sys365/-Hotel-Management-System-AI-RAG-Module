@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BedDouble, Users, ClipboardList, Sparkles, Hotel, LogOut } from "lucide-react"
+import { BedDouble, Users, ClipboardList, Sparkles, Hotel, LogOut, MessageSquare } from "lucide-react"
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -43,6 +43,14 @@ function Dashboard() {
       path: "/spa",
       color: "text-purple-500",
       border: "hover:border-purple-600/60",
+    },
+    {
+      title: "Chat",
+      description: "Ask the hotel assistant",
+      icon: MessageSquare,
+      path: "/chat",
+      color: "text-amber-500",
+      border: "hover:border-amber-600/60",
     },
   ]
 
