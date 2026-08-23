@@ -1,35 +1,37 @@
 # 🏨 Hotel Management System + AI/RAG Module
 
-A full-stack hotel management application built with **Spring Boot** (backend) and **React + Vite** (frontend). It supports JWT-based authentication and provides CRUD operations for Rooms, Customers, Bookings, and Spa services through a REST API.
+A full-stack hotel management application built with **Spring Boot** (backend) and **React + Vite** (frontend). It supports JWT-based authentication and provides CRUD operations for Rooms, Customers, Bookings, and Spa services through a REST API — plus a working **Retrieval-Augmented Generation (RAG) chat assistant** backed by a dual-datasource architecture (MySQL + PostgreSQL/pgvector).
 
-This repo also now hosts an **experimental AI/RAG module** — a local Ollama-powered embedding + retrieval pipeline running alongside the hotel backend, using a second PostgreSQL (pgvector) datasource.
+**🔗 Live Demo:** [hotel-management-frontend-ebon.vercel.app](https://hotel-management-frontend-ebon.vercel.app)
+**🔗 Backend API:** [hotel-management-system-ai-rag-module-5.onrender.com](https://hotel-management-system-ai-rag-module-5.onrender.com)
+**🔗 Swagger Docs:** [/swagger-ui/index.html](https://hotel-management-system-ai-rag-module-5.onrender.com/swagger-ui/index.html)
 
 ---
 
 ## 🗂 Project Structure
 
 ```
-hotel-management-project/
-├── hotel-management/        # Spring Boot backend
-│   ├── src/main/java/...
-│   │   ├── AuthController.java
-│   │   ├── JwtUtil.java / JwtFilter.java
-│   │   ├── Security.java
-│   │   ├── Room.java / RoomService.java / Waiter.java (RoomController)
-│   │   ├── Customer.java / CustomerService.java / CustomerController.java
-│   │   ├── Booking.java / BookingService.java / BookingController.java
-│   │   ├── Spa.java / Spaservice.java / SpaController.java
-│   │   │
-│   │   ├── Database.java              # Dual datasource config (MySQL + Postgres)
-│   │   ├── OllamaEmbeddingModel.java  # Calls local Ollama for embeddings + text generation
-│   │   ├── VectorRespository.java     # pgvector reads/writes (ai_documents table)
-│   │   ├── VectorService.java         # Service layer over VectorRespository
-│   │   ├── VectorTestController.java  # /api/ai-test/* endpoints
-│   │   └── TZCheck.java               # Timezone debug utility
-│   │
-│   └── src/main/resources/application.properties
+spring-hotel-rag/
+├── backend/                  # Spring Boot backend
+│   └── src/main/java/hotel/management/hotel/management/
+│       ├── AuthController.java
+│       ├── JwtUtil.java / JwtFilter.java
+│       ├── Security.java
+│       ├── Room.java / RoomService.java / RoomController.java
+│       ├── Customer.java / CustomerService.java / CustomerController.java
+│       ├── Booking.java / BookingService.java / BookingController.java
+│       ├── Spa.java / SpaService.java / SpaController.java
+│       │
+│       ├── Database.java              # Dual datasource config (MySQL + Postgres)
+│       ├── OllamaEmbeddingModel.java  # Embedding + generation client (HuggingFace API)
+│       ├── VectorRespository.java     # pgvector reads/writes (ai_documents table)
+│       ├── VectorService.java         # Service layer over VectorRespository
+│       ├── TextChunker.java           # Sentence-aware chunking with overlap
+│       ├── IngestionController.java   # /api/ingest/text — chunk + embed + store
+│       ├── ChatController.java        # /api/chat/ask — RAG question answering
+│       └── VectorTestController.java  # /api/ai-test/* — early pipeline test endpoints
 │
-└── hotel-fronted/           # React + Vite frontend
+└── frontend/                 # React + Vite frontend
     └── src/
         ├── App.jsx
         ├── Login.jsx
@@ -37,130 +39,114 @@ hotel-management-project/
         ├── Rooms.jsx
         ├── Customers.jsx
         ├── Bookings.jsx
-        └── Spa.jsx
+        ├── Spa.jsx
+        └── Chat.jsx           # RAG chat UI
 ```
 
 ---
 
 ## ⚙️ Tech Stack
 
-| Layer         | Technology                                        |
-|---------------|----------------------------------------------------|
-| Backend       | Java 17, Spring Boot, Spring Security              |
-| Auth          | JWT (jjwt 0.11.5)                                  |
-| Hotel Database| MySQL + Spring Data JPA / Hibernate                |
-| AI/RAG Store  | PostgreSQL + pgvector                              |
-| Local LLM     | Ollama (`nomic-embed-text` for embeddings, `qwen2.5-coder:1.5b` for generation) |
-| HTTP Client   | Spring WebFlux / RestTemplate (Ollama calls)       |
-| Utils         | Lombok, Jackson                                    |
-| API Docs      | Swagger / SpringDoc OpenAPI                        |
-| Frontend      | React 18, React Router v6, Vite                    |
+| Layer          | Technology                                                  |
+|-----------------|--------------------------------------------------------------|
+| Backend         | Java 17, Spring Boot 4.1, Spring Security                    |
+| Auth            | JWT (jjwt 0.11.5)                                             |
+| Hotel Database  | MySQL (Aiven) + Spring Data JPA / Hibernate                  |
+| AI/RAG Store    | PostgreSQL + pgvector (Neon, serverless)                     |
+| Embeddings      | HuggingFace Inference API — `sentence-transformers/all-MiniLM-L6-v2` (384-dim) |
+| Generation      | HuggingFace Inference API — `meta-llama/Llama-3.1-8B-Instruct` |
+| HTTP Client     | Spring RestTemplate                                           |
+| Utils           | Jackson (ObjectMapper for response parsing)                  |
+| API Docs        | Swagger / SpringDoc OpenAPI                                   |
+| Frontend        | React 18, React Router v6, Vite, Tailwind CSS, shadcn/ui      |
+| Animations      | Framer Motion                                                 |
+| Deployment      | Render (backend), Vercel (frontend)                           |
+
+> **Note:** This project originally used a locally-run Ollama server (`nomic-embed-text` + `qwen2.5-coder:1.5b`) for embeddings and generation. Since Render's free tier can't run Ollama, the AI layer was migrated to HuggingFace's hosted Inference API so the RAG pipeline works fully in production, not just in local development.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
 
 - Java 17+
-- Maven 3.8+
-- MySQL 8+ (hotel data)
-- PostgreSQL 14+ with the `pgvector` extension (AI/RAG data)
-- [Ollama](https://ollama.com) running locally, with `nomic-embed-text` and `qwen2.5-coder:1.5b` pulled
+- Maven (or use the included `mvnw` wrapper — no separate install needed)
+- MySQL 8+ (hotel data) — or a free hosted instance (e.g. Aiven, Clever Cloud)
+- PostgreSQL 14+ with the `pgvector` extension (AI/RAG data) — or a free hosted instance (e.g. Neon)
+- A free [HuggingFace](https://huggingface.co) account + API token (Settings → Access Tokens)
 - Node.js 18+ and npm
 
 ---
 
 ### Backend Setup
 
-1. **Create the MySQL database** (hotel data):
-
-```sql
-CREATE DATABASE student_db;
-```
+1. **Create the MySQL database** (hotel data) — schema is auto-created via `spring.jpa.hibernate.ddl-auto=update`.
 
 2. **Create the PostgreSQL database** (AI/RAG data) and enable pgvector:
 
 ```sql
-CREATE DATABASE hotel_ai;
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE ai_documents (
     id SERIAL PRIMARY KEY,
     user_id BIGINT,
     content TEXT,
-    embedding VECTOR(768),
+    embedding VECTOR(384),
     metadata JSONB
 );
 ```
 
-> Adjust the `VECTOR(768)` dimension to match whatever embedding model you use — `nomic-embed-text` outputs 768-dim vectors.
+> The vector dimension is **384**, matching the `all-MiniLM-L6-v2` embedding model. (If you swap embedding models, update this dimension to match.)
 
-3. **Configure both datasources** in `hotel-management/src/main/resources/application.properties`:
+3. **Set environment variables** (locally via IDE run config, or a `.env` — never commit these):
 
-```properties
-# Hotel data (MySQL)
-spring.datasource.mysql.jdbc-url=jdbc:mysql://localhost:3306/student_db
-spring.datasource.mysql.username=root
-spring.datasource.mysql.password=YOUR_PASSWORD
+```
+MYSQL_URL=jdbc:mysql://<host>:<port>/<db>
+MYSQL_USER=<user>
+MYSQL_PASSWORD=<password>
 
-# AI/RAG data (Postgres + pgvector)
-spring.datasource.postgres.jdbc-url=jdbc:postgresql://localhost:5432/hotel_ai
-spring.datasource.postgres.username=postgres
-spring.datasource.postgres.password=YOUR_PASSWORD
+POSTGRES_URL=jdbc:postgresql://<host>:<port>/<db>?sslmode=require
+POSTGRES_USER=<user>
+POSTGRES_PASSWORD=<password>
 
-spring.jpa.hibernate.ddl-auto=update
-
-# Ollama
-spring.ai.ollama.base-url=http://localhost:11434
-spring.ai.ollama.embedding.options.model=nomic-embed-text
+JWT_SECRET=<your-secret>
+HF_API_KEY=<your-huggingface-token>
 ```
 
-> ⚠️ **Security note:** Never commit real credentials to version control. This repo is public — move these to environment variables or a `.env`-style config before pushing further changes, and rotate any credentials that have already been committed.
-
-4. **Pull the Ollama models and start Ollama:**
+4. **Run the backend:**
 
 ```bash
-ollama pull nomic-embed-text
-ollama pull qwen2.5-coder:1.5b
-ollama serve
-```
-
-5. **Run the backend:**
-
-```bash
-cd hotel-management
+cd backend
 ./mvnw spring-boot:run
 ```
 
-The backend will start on **http://localhost:8080**
+The backend starts on **http://localhost:54321**
 
 ---
 
 ### Frontend Setup
 
 ```bash
-cd hotel-fronted
+cd frontend
 npm install
 npm run dev
 ```
 
-The frontend will start on **http://localhost:5173**
+The frontend starts on **http://localhost:5173**
 
 ---
 
 ## 🔐 Authentication
 
-Login is handled via a hardcoded admin account (for development purposes):
+Login is handled via a hardcoded admin account (development only — see [Known Limitations](#-known-limitations--suggested-improvements)):
 
 | Field    | Value      |
 |----------|------------|
 | Username | `admin`    |
 | Password | `admin123` |
 
-**POST** `/api/auth/login` — returns a JWT token.
-
-All other hotel API endpoints require the `Authorization: Bearer <token>` header. The `/api/ai-test/**` endpoints are currently open (no auth required) — see [Known Limitations](#-known-limitations--suggested-improvements).
+**POST** `/api/auth/login` — returns a JWT token. All other endpoints (including `/api/ingest/**` and `/api/chat/**`) require the `Authorization: Bearer <token>` header.
 
 ---
 
@@ -168,106 +154,47 @@ All other hotel API endpoints require the `Authorization: Bearer <token>` header
 
 ### Auth
 | Method | Endpoint          | Description       | Auth Required |
-|--------|-------------------|-------------------|---------------|
-| POST   | `/api/auth/login` | Login & get token | No            |
+|--------|-------------------|--------------------|----------------|
+| POST   | `/api/auth/login` | Login & get token | No             |
 
-### Rooms
-| Method | Endpoint          | Description     |
-|--------|-------------------|------------------|
-| GET    | `/api/rooms`      | List all rooms  |
-| POST   | `/api/rooms`      | Add a room      |
-| PUT    | `/api/rooms`      | Update a room   |
-| DELETE | `/api/rooms/{id}` | Delete a room   |
+### Rooms / Customers / Bookings / Spa
+Standard CRUD (`GET`, `POST`, `PUT`, `DELETE`) under `/api/rooms`, `/api/customer`, `/api/booking`, `/api/spa`. All require a valid JWT.
 
-### Customers
-| Method | Endpoint             | Description         |
-|--------|-----------------------|---------------------|
-| GET    | `/api/customer`      | List all customers  |
-| POST   | `/api/customer`      | Add a customer      |
-| PUT    | `/api/customer`      | Update a customer   |
-| DELETE | `/api/customer/{id}` | Delete a customer   |
+### AI / RAG
+| Method | Endpoint            | Description                                                        |
+|--------|-----------------------|---------------------------------------------------------------------|
+| POST   | `/api/ingest/text`  | Chunks the given text (sentence-aware, with overlap), embeds each chunk, and stores it in `ai_documents` |
+| POST   | `/api/chat/ask`     | Embeds the question, retrieves the most similar stored chunks, and generates a grounded answer |
 
-### Bookings
-| Method | Endpoint            | Description        |
-|--------|----------------------|--------------------|
-| GET    | `/api/booking`      | List all bookings  |
-| POST   | `/api/booking`      | Create a booking   |
-| DELETE | `/api/booking/{id}` | Cancel a booking   |
+**Example — ingest:**
+```json
+POST /api/ingest/text
+{
+  "userId": 1,
+  "content": "Check-in time is 2 PM. Check-out time is 11 AM. Pets are allowed with prior notice."
+}
+```
 
-### Spa Services
-| Method | Endpoint        | Description            |
-|--------|-----------------|-------------------------|
-| GET    | `/api/spa`      | List all spa services  |
-| POST   | `/api/spa`      | Add a spa service      |
-| PUT    | `/api/spa`      | Update a spa service   |
-| DELETE | `/api/spa/{id}` | Delete a spa service   |
+**Example — ask:**
+```json
+POST /api/chat/ask
+{
+  "userId": 1,
+  "question": "What time is check-in?"
+}
+```
 
-### AI / RAG (Experimental — not yet integrated into hotel workflows)
-| Method | Endpoint                          | Description                                                |
-|--------|------------------------------------|--------------------------------------------------------------|
-| GET    | `/api/ai-test/save`               | Embeds a hardcoded test string and stores it in `ai_documents` |
-| GET    | `/api/ai-test/search`             | Embeds a test query and returns the top similar stored docs   |
-| GET    | `/api/ai-test/chat?question=...`  | Embeds the question, retrieves similar context, generates an answer via Ollama |
-
-> **Swagger UI** is available at: `http://localhost:8080/swagger-ui/index.html`
+> **Swagger UI:** `https://hotel-management-system-ai-rag-module-5.onrender.com/swagger-ui/index.html`
 
 ---
 
-## 🧱 Data Models
+## 🧠 AI / RAG Module — How It Works
 
-### Room
-```json
-{
-  "roomNumber": "101",
-  "roomType": "Deluxe",
-  "price": 2500.00,
-  "available": true
-}
-```
+1. **Ingestion** (`IngestionController` → `TextChunker` → `OllamaEmbeddingModel` → `VectorService`): incoming text is split into sentence-aware chunks (~500 chars, 100-char overlap so context isn't lost at boundaries), each chunk is embedded via HuggingFace's `all-MiniLM-L6-v2`, and stored in Postgres with pgvector.
+2. **Retrieval + Generation** (`ChatController`): a user's question is embedded the same way, pgvector's cosine similarity (`<=>` operator) finds the top-3 most relevant stored chunks, those chunks are stitched into a prompt as context, and HuggingFace's `Llama-3.1-8B-Instruct` generates an answer **grounded in that retrieved context** — not the model's general knowledge.
+3. **Chat UI** (`Chat.jsx`): a simple message-thread interface that calls `/api/chat/ask` and displays the conversation.
 
-### Customer
-```json
-{
-  "name": "Ravi Kumar",
-  "email": "ravi@example.com",
-  "phone": "9876543210",
-  "address": "Chennai, India",
-  "adharNo": "1234-5678-9012"
-}
-```
-
-### Booking
-```json
-{
-  "checkinDate": "2026-07-01",
-  "checkoutDate": "2026-07-05",
-  "checkinTime": "14:00",
-  "checkoutTime": "11:00",
-  "totalprice": 10000.00,
-  "customer": { "id": 1 },
-  "room": { "id": 2 }
-}
-```
-
-### Spa Service
-```json
-{
-  "serviceName": "Full Body Massage",
-  "price": 1500.00,
-  "duration": 60,
-  "available": true
-}
-```
-
-### AI Document (`ai_documents` table, Postgres)
-```json
-{
-  "user_id": 11,
-  "content": "HELLO WORLD",
-  "embedding": "[768-dim vector]",
-  "metadata": { "source": "test.pdf" }
-}
-```
+This is a genuinely working, end-to-end RAG pipeline — ingest → chunk → embed → store → retrieve → generate — deployed and testable via the live demo.
 
 ---
 
@@ -275,37 +202,26 @@ All other hotel API endpoints require the `Authorization: Bearer <token>` header
 
 The backend allows requests from:
 - `http://localhost:5173` (local dev)
-- `https://peaceful-pixie-f3e81b.netlify.app` (deployed frontend)
+- `https://hotel-management-frontend-ebon.vercel.app` (deployed frontend)
 
-Update `Security.java` to add your own deployment URL.
-
----
-
-## 🧠 AI / RAG Module — How It Works
-
-1. `OllamaEmbeddingModel` sends text to a local Ollama server (`/api/embed`) using `nomic-embed-text` and gets back a float vector.
-2. `VectorRespository` stores that vector in Postgres (`ai_documents`, using pgvector's `vector` column type) or searches for similar vectors using cosine distance (`<=>`).
-3. `VectorService` is a thin wrapper over the repository.
-4. `VectorTestController` exposes `/api/ai-test/save`, `/search`, and `/chat` to test the pipeline end-to-end — embed → store → retrieve → generate (via `qwen2.5-coder:1.5b` on Ollama's `/api/generate`).
-
-This is currently a standalone test module — it doesn't yet ingest real documents (chunking/upload) or plug into a chat UI. It's the foundation for a Spring Boot + Ollama + pgvector RAG system being built out separately from the hotel CRUD features.
+Update `Security.java` to add your own deployment URL if you fork this.
 
 ---
 
 ## 🚧 Known Limitations & Suggested Improvements
 
-This project is a **learning/portfolio project** — here are areas to improve before production use:
+This is a **learning/portfolio project** — honest list of what's next:
 
-- [ ] Move all credentials (`admin/admin123`, MySQL/Postgres passwords, JWT secret) to environment variables — several are currently committed in `application.properties`
-- [ ] Add real user management with a database-backed `UserDetailsService`
-- [ ] Add input validation (`@Valid`, `@NotNull`, etc.)
-- [ ] Add proper error handling with `@ControllerAdvice`
-- [ ] Fix typos in class names (`Waiter` → `RoomController`, `Respository` → `Repository`)
+- [ ] Move hardcoded `admin/admin123` login to a real database-backed `UserDetailsService`
+- [ ] Add input validation (`@Valid`, `@NotNull`, etc.) on request DTOs
+- [ ] Add proper centralized error handling (`@ControllerAdvice`) instead of per-endpoint try/catch
+- [ ] Fix naming inconsistencies (`VectorRespository` → `VectorRepository`)
 - [ ] Add pagination for list endpoints
 - [ ] Write unit and integration tests
-- [ ] Secure `/api/ai-test/**` endpoints (currently open to all)
-- [ ] Build out document ingestion/chunking for the RAG pipeline (currently only a hardcoded test string is embedded)
-- [ ] Decide whether the AI/RAG module stays merged into this repo long-term or gets split into its own project
+- [ ] Support file/PDF upload for ingestion (currently plain-text only)
+- [ ] Tune the generation prompt for shorter, more direct answers
+- [ ] Let the chat assistant query live hotel data (rooms/bookings), not just manually ingested text
+- [ ] Payment gateway integration (Razorpay) with PDF receipt generation — planned next
 
 ---
 
@@ -313,19 +229,19 @@ This project is a **learning/portfolio project** — here are areas to improve b
 
 **Backend:**
 ```bash
-cd hotel-management
+cd backend
 ./mvnw clean package
 java -jar target/hotel-management-0.0.1-SNAPSHOT.jar
 ```
 
 **Frontend:**
 ```bash
-cd hotel-fronted
+cd frontend
 npm run build
+vercel --prod
 ```
 
 ---
 
 ## 📄 License
 
-This project is for educational purposes. Feel free to fork and improve it.
