@@ -1,26 +1,32 @@
 package hotel.management.hotel.management;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 public class HotelDataSyncService {
 
-    private static final Logger logger = LoggerFactory.getLogger(HotelDataSyncService.class);
-
     private static final Long SYSTEM_USER_ID = 1L;
     private static final String ROOM_SOURCE = "room_sync";
     private static final String SPA_SOURCE = "spa_sync";
+    private static final String BOOKING_SOURCE = "booking_sync";
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
     @Autowired
     private RoomService roomService;
 
     @Autowired
     private Spaservice spaService;
+
+    @Autowired
+    private BookingService bookingService;
 
     @Autowired
     private TextChunker textChunker;
@@ -34,43 +40,67 @@ public class HotelDataSyncService {
     public String syncAll() {
         int roomCount = syncRooms();
         int spaCount = syncSpa();
-        return "Synced " + roomCount + " room record(s) and " + spaCount + " spa record(s) into the knowledge base.";
+        int bookingCount = syncBookings();
+        return "Synced " + roomCount + " room record(s), " + spaCount
+                + " spa record(s), and " + bookingCount + " booking record(s) into the knowledge base.";
     }
 
     public int syncRooms() {
-        logger.info("Starting room sync...");
         vectorService.deleteBySource(SYSTEM_USER_ID, ROOM_SOURCE);
         List<Room> rooms = roomService.findAll();
-        int successCount = 0;
         for (Room room : rooms) {
-            try {
-                ingest(buildRoomFact(room), ROOM_SOURCE);
-                successCount++;
-            } catch (Exception e) {
-                logger.error("Failed to sync room id={} roomNumber={}: {}",
-                        room.getId(), room.getRoomNumber(), e.getMessage(), e);
-            }
+            ingest(buildRoomFact(room), ROOM_SOURCE);
         }
-        logger.info("Room sync finished: {}/{} room(s) embedded successfully.", successCount, rooms.size());
-        return successCount;
+        return rooms.size();
     }
 
     public int syncSpa() {
-        logger.info("Starting spa sync...");
         vectorService.deleteBySource(SYSTEM_USER_ID, SPA_SOURCE);
         List<Spa> services = spaService.findAll();
-        int successCount = 0;
         for (Spa spa : services) {
-            try {
-                ingest(buildSpaFact(spa), SPA_SOURCE);
-                successCount++;
-            } catch (Exception e) {
-                logger.error("Failed to sync spa id={} serviceName={}: {}",
-                        spa.getId(), spa.getServiceName(), e.getMessage(), e);
+            ingest(buildSpaFact(spa), SPA_SOURCE);
+        }
+        return services.size();
+    }
+
+    public int syncBookings() {
+        vectorService.deleteBySource(SYSTEM_USER_ID, BOOKING_SOURCE);
+        List<Booking> bookings = bookingService.findAll();
+        for (Booking booking : bookings) {
+            String fact = buildBookingFact(booking);
+            if (fact != null) {
+                ingest(fact, BOOKING_SOURCE);
             }
         }
-        logger.info("Spa sync finished: {}/{} spa service(s) embedded successfully.", successCount, services.size());
-        return successCount;
+        return bookings.size();
+    }
+
+    /**
+     * Fired automatically by RoomService / Spaservice / BookingService right
+     * after a create, update, or delete, so the assistant's knowledge stays
+     * fresh without anyone having to click "Sync Hotel Data" manually.
+     * Runs @Async so the original API call (e.g. adding a room) returns
+     * immediately instead of waiting on the embedding calls.
+     */
+    @Async
+    @EventListener
+    public void onHotelDataChanged(HotelDataChangedEvent event) {
+        switch (event.getEntityType()) {
+            case ROOM -> syncRooms();
+            case SPA -> syncSpa();
+            case BOOKING -> syncBookings();
+        }
+    }
+
+    /**
+     * Safety-net full re-sync, in case an event was ever missed (e.g. a
+     * server restart, a direct DB edit, or a bulk import). Runs every
+     * 4 hours; first run is delayed 2 minutes after startup so the app
+     * has time to finish booting and connect to both databases.
+     */
+    @Scheduled(initialDelay = 2 * 60 * 1000, fixedRate = 4 * 60 * 60 * 1000)
+    public void scheduledResync() {
+        syncAll();
     }
 
     private void ingest(String factText, String source) {
@@ -99,6 +129,20 @@ public class HotelDataSyncService {
                 spa.getDuration(),
                 spa.getPrice(),
                 spa.isAvailable() ? "available" : "not available"
+        );
+    }
+
+    private String buildBookingFact(Booking booking) {
+        if (booking.getRoom() == null) return null;
+
+        String roomNumber = booking.getRoom().getRoomNumber();
+        String customerName = booking.getCustomer() != null ? booking.getCustomer().getName() : "a guest";
+        String checkin = booking.getCheckinDate() != null ? booking.getCheckinDate().format(DATE_FMT) : "an unspecified date";
+        String checkout = booking.getCheckoutDate() != null ? booking.getCheckoutDate().format(DATE_FMT) : "an unspecified date";
+
+        return String.format(
+                "Room %s is booked by %s from %s to %s. This means Room %s is NOT available for that date range.",
+                roomNumber, customerName, checkin, checkout, roomNumber
         );
     }
 }

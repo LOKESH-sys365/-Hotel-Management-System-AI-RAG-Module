@@ -2,6 +2,7 @@ package hotel.management.hotel.management;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,19 +13,25 @@ public class RoomService {
     @Autowired
     private RoomRespository roomRespository;
 
-   public Room addRoom(Room room){
-       roomRespository.save(room);
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
-       return room;
-   }
+    public Room addRoom(Room room){
+        roomRespository.save(room);
+        eventPublisher.publishEvent(new HotelDataChangedEvent(HotelDataChangedEvent.EntityType.ROOM));
+        return room;
+    }
     public List<Room> findAll(){
         return roomRespository.findAll();
     }
     public void DeleteRoom(Long Id){
         roomRespository.deleteById(Id);
+        eventPublisher.publishEvent(new HotelDataChangedEvent(HotelDataChangedEvent.EntityType.ROOM));
     }
     public Room updateRoom(Room room){
-        return roomRespository.save(room);
+        Room saved = roomRespository.save(room);
+        eventPublisher.publishEvent(new HotelDataChangedEvent(HotelDataChangedEvent.EntityType.ROOM));
+        return saved;
     }
 
 }
