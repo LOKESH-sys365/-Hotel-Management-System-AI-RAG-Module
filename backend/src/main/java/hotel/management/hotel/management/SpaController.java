@@ -9,11 +9,16 @@ import java.util.List;
 @RequestMapping("/api/spa")
 public class SpaController {
     @Autowired
+    private HotelDataSyncService hotelDataSyncService;
+    @Autowired
+
     private Spaservice spaService;
 
     @PostMapping
     public Spa addService(@RequestBody Spa spa){
-        return spaService.addService(spa);
+        Spa saved = spaService.addService(spa);
+        hotelDataSyncService.syncSpa();
+        return saved;
     }
     @GetMapping
     public List<Spa> findAll(){
@@ -21,11 +26,14 @@ public class SpaController {
     }
     @PutMapping
     public Spa updateService(@RequestBody Spa spa){
-        return spaService.updateService(spa);
+        Spa updated = spaService.updateService(spa);
+        hotelDataSyncService.syncSpa();
+        return updated;
     }
     @DeleteMapping("/{id}")
     public void deleteService(@PathVariable Long id){
         spaService.deleteService(id);
+        hotelDataSyncService.syncSpa();
     }
 
 
