@@ -1,5 +1,7 @@
 package hotel.management.hotel.management;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -7,6 +9,8 @@ import java.util.List;
 
 @Service
 public class HotelDataSyncService {
+
+    private static final Logger logger = LoggerFactory.getLogger(HotelDataSyncService.class);
 
     private static final Long SYSTEM_USER_ID = 1L;
     private static final String ROOM_SOURCE = "room_sync";
@@ -34,21 +38,39 @@ public class HotelDataSyncService {
     }
 
     public int syncRooms() {
+        logger.info("Starting room sync...");
         vectorService.deleteBySource(SYSTEM_USER_ID, ROOM_SOURCE);
         List<Room> rooms = roomService.findAll();
+        int successCount = 0;
         for (Room room : rooms) {
-            ingest(buildRoomFact(room), ROOM_SOURCE);
+            try {
+                ingest(buildRoomFact(room), ROOM_SOURCE);
+                successCount++;
+            } catch (Exception e) {
+                logger.error("Failed to sync room id={} roomNumber={}: {}",
+                        room.getId(), room.getRoomNumber(), e.getMessage(), e);
+            }
         }
-        return rooms.size();
+        logger.info("Room sync finished: {}/{} room(s) embedded successfully.", successCount, rooms.size());
+        return successCount;
     }
 
     public int syncSpa() {
+        logger.info("Starting spa sync...");
         vectorService.deleteBySource(SYSTEM_USER_ID, SPA_SOURCE);
         List<Spa> services = spaService.findAll();
+        int successCount = 0;
         for (Spa spa : services) {
-            ingest(buildSpaFact(spa), SPA_SOURCE);
+            try {
+                ingest(buildSpaFact(spa), SPA_SOURCE);
+                successCount++;
+            } catch (Exception e) {
+                logger.error("Failed to sync spa id={} serviceName={}: {}",
+                        spa.getId(), spa.getServiceName(), e.getMessage(), e);
+            }
         }
-        return services.size();
+        logger.info("Spa sync finished: {}/{} spa service(s) embedded successfully.", successCount, services.size());
+        return successCount;
     }
 
     private void ingest(String factText, String source) {

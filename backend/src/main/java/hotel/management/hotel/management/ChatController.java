@@ -23,6 +23,10 @@ public class ChatController {
 
             List<String> relevantChunks = vectorService.searchSimilar(queryEmbedding, request.getUserId(), 3);
 
+            if (relevantChunks.isEmpty()) {
+                return ResponseEntity.ok("I don't have information about that yet.");
+            }
+
             StringBuilder context = new StringBuilder();
             for (String chunk : relevantChunks) {
                 context.append(chunk).append("\n");

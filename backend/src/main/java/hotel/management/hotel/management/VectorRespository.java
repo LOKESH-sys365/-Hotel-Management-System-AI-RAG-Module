@@ -1,3 +1,5 @@
+
+
 package hotel.management.hotel.management;
 
 import org.jspecify.annotations.NonNull;
@@ -42,8 +44,13 @@ public class VectorRespository {
         jdbcTemplate.update(sql, userId, source);
     }
 
+    private static final double MAX_RELEVANT_DISTANCE = 0.5;
+
     public List<String> searchSimilar(float @NonNull [] queryEmbedding, Long userId, int limit) {
-        String sql = "SELECT content FROM ai_documents WHERE user_id=? ORDER BY embedding <=> ?::vector LIMIT ?";
+        String sql = "SELECT content FROM (" +
+                "  SELECT content, embedding <=> ?::vector AS distance " +
+                "  FROM ai_documents WHERE user_id=?" +
+                ") ranked WHERE distance < ? ORDER BY distance LIMIT ?";
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < queryEmbedding.length; i++) {
             sb.append(queryEmbedding[i]);
@@ -51,6 +58,6 @@ public class VectorRespository {
         }
         sb.append("]");
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString("content"),
-                userId, sb.toString(), limit);
+                sb.toString(), userId, MAX_RELEVANT_DISTANCE, limit);
     }
 }
