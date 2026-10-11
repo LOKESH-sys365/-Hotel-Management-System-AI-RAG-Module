@@ -6,6 +6,7 @@ import Customers from "./Customers"
 import Bookings from "./Bookings"
 import Spa from "./Spa"
 import Chat from "./Chat"
+import AdminKnowledge from "./AdminKnowledge"
 
 // Protects routes — redirects to login if no token found
 function PrivateRoute({ children }) {
@@ -15,31 +16,32 @@ function PrivateRoute({ children }) {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Login />} />
 
-        <Route path="/dashboard" element={
-          <PrivateRoute><Dashboard /></PrivateRoute>
-        } />
-        <Route path="/rooms" element={
-          <PrivateRoute><Rooms /></PrivateRoute>
-        } />
-        <Route path="/customers" element={
-          <PrivateRoute><Customers /></PrivateRoute>
-        } />
-        <Route path="/bookings" element={
-          <PrivateRoute><Bookings /></PrivateRoute>
-        } />
-        <Route path="/spa" element={
-          <PrivateRoute><Spa /></PrivateRoute>
-        } />
-        <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/dashboard" element={
+            <PrivateRoute><Dashboard /></PrivateRoute>
+          } />
+          <Route path="/rooms" element={
+            <PrivateRoute><Rooms /></PrivateRoute>
+          } />
+          <Route path="/customers" element={
+            <PrivateRoute><Customers /></PrivateRoute>
+          } />
+          <Route path="/bookings" element={
+            <PrivateRoute><Bookings /></PrivateRoute>
+          } />
+          <Route path="/spa" element={
+            <PrivateRoute><Spa /></PrivateRoute>
+          } />
+          <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/admin/knowledge" element={<PrivateRoute><AdminKnowledge /></PrivateRoute>} />
 
-        {/* Catch-all — redirect unknown routes to dashboard */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Catch-all — redirect unknown routes to dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
   )
 }
 

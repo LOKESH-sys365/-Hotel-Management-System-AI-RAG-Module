@@ -1,0 +1,63 @@
+
+
+package hotel.management.hotel.management;
+
+import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCallback;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+
+
+@Component
+public class VectorRespository {
+
+    @Qualifier("postgresJdbcTemplate")
+    @Autowired
+
+    private JdbcTemplate jdbcTemplate;
+
+    public void saveEmbedding(Long userId, String content, float[] embedding, String metadata) {
+        String sql = "INSERT INTO ai_documents(user_id,content,embedding,metadata) VALUES(?,?,?::vector,?::jsonb)";
+        Float[] floatObjects = new Float[embedding.length];
+        for (int i = 0; i < embedding.length; i++) {
+            floatObjects[i] = embedding[i];
+
+        }
+        jdbcTemplate.execute(sql, (PreparedStatementCallback<Void>) ps -> {
+            ps.setLong(1, userId);
+            ps.setString(2, content);
+            ps.setArray(3, ps.getConnection().createArrayOf("float4", floatObjects));
+            ps.setString(4, metadata);
+            ps.executeUpdate();
+            return null;
+
+
+        });
+    }
+    public void deleteBySource(Long userId, String source) {
+        String sql = "DELETE FROM ai_documents WHERE user_id=? AND metadata->>'source'=?";
+        jdbcTemplate.update(sql, userId, source);
+    }
+
+    private static final double MAX_RELEVANT_DISTANCE = 0.5;
+
+    public List<String> searchSimilar(float @NonNull [] queryEmbedding, Long userId, int limit) {
+        String sql = "SELECT content FROM (" +
+                "  SELECT content, embedding <=> ?::vector AS distance " +
+                "  FROM ai_documents WHERE user_id=?" +
+                ") ranked WHERE distance < ? ORDER BY distance LIMIT ?";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < queryEmbedding.length; i++) {
+            sb.append(queryEmbedding[i]);
+            if (i < queryEmbedding.length - 1) sb.append(",");
+        }
+        sb.append("]");
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString("content"),
+                sb.toString(), userId, MAX_RELEVANT_DISTANCE, limit);
+    }
+}

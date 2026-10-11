@@ -3,31 +3,56 @@ import { useNavigate } from "react-router-dom"
 import { API_BASE_URL } from "./config"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BedDouble, Users, ClipboardList, Sparkles, Hotel, LogOut, MessageSquare, RefreshCw } from "lucide-react"
+import {
+  BedDouble,
+  Users,
+  ClipboardList,
+  Sparkles,
+  Hotel,
+  LogOut,
+  MessageSquare,
+  BrainCircuit,
+  RefreshCw,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react"
 
 function Dashboard() {
   const navigate = useNavigate()
+  const token = localStorage.getItem("token")
+
   const [syncing, setSyncing] = useState(false)
-  const [syncMessage, setSyncMessage] = useState("")
+  const [syncStatus, setSyncStatus] = useState(null) // { type: "success" | "error", message: string }
 
   const logout = () => {
     localStorage.removeItem("token")
     navigate("/")
   }
 
-  const syncNow = async () => {
+  // Pulls current Rooms & Spa data and refreshes the AI assistant's
+  // knowledge base via /api/sync/hotel-data.
+  const syncHotelData = async () => {
     setSyncing(true)
-    setSyncMessage("")
-    const token = localStorage.getItem("token")
+    setSyncStatus(null)
     try {
       const response = await fetch(`${API_BASE_URL}/api/sync/hotel-data`, {
         method: "POST",
-        headers: { "Authorization": "Bearer " + token }
+        headers: { Authorization: "Bearer " + token },
       })
+
       const text = await response.text()
-      setSyncMessage(response.ok ? text : `Sync failed: ${text}`)
+
+      if (!response.ok) {
+        throw new Error(text || `Sync failed (status ${response.status})`)
+      }
+
+      setSyncStatus({ type: "success", message: text })
     } catch (err) {
-      setSyncMessage("Sync failed: could not reach the server.")
+      setSyncStatus({
+        type: "error",
+        message: err.message || "Could not reach the server. Please try again.",
+      })
     } finally {
       setSyncing(false)
     }
@@ -74,6 +99,14 @@ function Dashboard() {
       color: "text-amber-500",
       border: "hover:border-amber-600/60",
     },
+    {
+      title: "Admin: Add Knowledge",
+      description: "Teach the AI assistant new info",
+      icon: BrainCircuit,
+      path: "/admin/knowledge",
+      color: "text-cyan-500",
+      border: "hover:border-cyan-600/60",
+    },
   ]
 
   return (
@@ -89,14 +122,19 @@ function Dashboard() {
 
           <div className="flex items-center gap-3">
             <Button
-                onClick={syncNow}
+                onClick={syncHotelData}
                 disabled={syncing}
                 variant="outline"
                 className="border-slate-700 text-slate-300 hover:bg-slate-800"
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing..." : "Sync Now"}
+              {syncing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              {syncing ? "Syncing..." : "Sync Hotel Data"}
             </Button>
+
             <Button
                 onClick={logout}
                 variant="outline"
@@ -108,11 +146,23 @@ function Dashboard() {
           </div>
         </header>
 
-        {syncMessage && (
-            <div className="px-8 pt-4">
-              <p className="text-sm text-slate-300 bg-slate-900/60 border border-slate-800 rounded-md px-4 py-2 inline-block">
-                {syncMessage}
-              </p>
+        {/* Sync status banner */}
+        {syncStatus && (
+            <div className="px-8 pt-6">
+              <div
+                  className={`flex items-start gap-2 p-3 rounded-lg text-sm border max-w-xl ${
+                      syncStatus.type === "success"
+                          ? "bg-emerald-600/10 border-emerald-600/30 text-emerald-300"
+                          : "bg-rose-600/10 border-rose-600/30 text-rose-300"
+                  }`}
+              >
+                {syncStatus.type === "success" ? (
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                ) : (
+                    <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                )}
+                <span>{syncStatus.message}</span>
+              </div>
             </div>
         )}
 

@@ -1,5 +1,6 @@
 package hotel.management.hotel.management;
 
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,8 +34,10 @@ public class ChatOrchestrationService {
     @Autowired
     private OllamaEmbeddingModel embeddingModel;
 
-    @Autowired
-    private VectorService vectorService;
+
+
+
+
 
     private static final Pattern AVAILABILITY_COUNT_PATTERN = Pattern.compile(
             "(how many|number of).{0,20}(room).{0,30}(free|available|vacant|left|empty)",
@@ -48,6 +51,7 @@ public class ChatOrchestrationService {
     );
 
     private static final Pattern ROOM_NUMBER_PATTERN = Pattern.compile("room\\s*#?\\s*(\\w+)", Pattern.CASE_INSENSITIVE);
+    private VectorRespository vectorService;
 
     public String answer(String question, Long userId) {
         // ---------- 1. FAST PATH: deterministic keyword matching ----------
@@ -133,6 +137,7 @@ public class ChatOrchestrationService {
     /** The original RAG pipeline: embed question, search vector store, generate grounded answer. */
     private String answerFromRag(String question, Long userId) {
         float[] queryEmbedding = embeddingModel.getEmbedding(question);
+
         List<String> relevantChunks = vectorService.searchSimilar(queryEmbedding, userId, 3);
 
         StringBuilder context = new StringBuilder();
@@ -147,4 +152,25 @@ public class ChatOrchestrationService {
 
         return embeddingModel.generateText(prompt);
     }
-}
+
+
+    private HikariDataSource context;
+    String finalContext = context.toString();
+
+        String prompt = """
+                You are an AI customer support assistant for our hotel company.
+
+                Answer the customer using ONLY the company information provided below.
+
+                If the answer is not available in the provided information, say:
+                "I don't have that information in the company documents."
+                
+                COMPANMY INFORMATION
+                %s
+                
+                """.formatted(finalContext);
+
+
+    }
+
+

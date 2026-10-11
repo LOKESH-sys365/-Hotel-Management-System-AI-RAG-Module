@@ -14,7 +14,7 @@ import java.util.List;
 
 
 @Component
-public class VectorRespository {
+public class  VectorRespository {
 
     @Qualifier("postgresJdbcTemplate")
     @Autowired

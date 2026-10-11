@@ -4,7 +4,7 @@ import { API_BASE_URL } from "./config"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, MessageSquare, Loader2, Send } from "lucide-react"
+import { ArrowLeft, MessageSquare, Loader2, Send, AlertTriangle } from "lucide-react"
 
 function Chat() {
     const [question, setQuestion] = useState("")
@@ -30,10 +30,32 @@ function Chat() {
                 },
                 body: JSON.stringify({ userId: 1, question: userMessage.text })
             })
-            const answer = await response.text()
-            setMessages(prev => [...prev, { role: "assistant", text: answer }])
+
+            const text = await response.text()
+
+            if (!response.ok) {
+                // Backend returns "Error: <message>" with a 500 status on failure
+                // (e.g. Hugging Face quota hit, DB down, backend still waking up).
+                setMessages(prev => [
+                    ...prev,
+                    {
+                        role: "error",
+                        text: text || `Something went wrong (status ${response.status}). Please try again.`,
+                    },
+                ])
+                return
+            }
+
+            setMessages(prev => [...prev, { role: "assistant", text }])
         } catch (err) {
-            setMessages(prev => [...prev, { role: "assistant", text: "Error: could not get a response." }])
+            // Network-level failure: server unreachable, CORS block, timeout, etc.
+            setMessages(prev => [
+                ...prev,
+                {
+                    role: "error",
+                    text: "Could not reach the assistant. The server may be waking up (free hosting sleeps when idle) — please wait a moment and try again.",
+                },
+            ])
         } finally {
             setLoading(false)
         }
@@ -68,18 +90,31 @@ function Chat() {
                         {messages.length === 0 && (
                             <p className="text-slate-500 text-sm text-center py-8">No messages yet — ask something.</p>
                         )}
-                        {messages.map((msg, i) => (
-                            <div
-                                key={i}
-                                className={`p-3 rounded-lg text-sm ${
-                                    msg.role === "user"
-                                        ? "bg-rose-600/20 border border-rose-600/30 text-white ml-8"
-                                        : "bg-slate-800/60 border border-slate-700 text-slate-200 mr-8"
-                                }`}
-                            >
-                                {msg.text}
-                            </div>
-                        ))}
+                        {messages.map((msg, i) => {
+                            if (msg.role === "error") {
+                                return (
+                                    <div
+                                        key={i}
+                                        className="flex items-start gap-2 p-3 rounded-lg text-sm bg-rose-600/10 border border-rose-600/30 text-rose-300 mr-8"
+                                    >
+                                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                                        <span>{msg.text}</span>
+                                    </div>
+                                )
+                            }
+                            return (
+                                <div
+                                    key={i}
+                                    className={`p-3 rounded-lg text-sm ${
+                                        msg.role === "user"
+                                            ? "bg-rose-600/20 border border-rose-600/30 text-white ml-8"
+                                            : "bg-slate-800/60 border border-slate-700 text-slate-200 mr-8"
+                                    }`}
+                                >
+                                    {msg.text}
+                                </div>
+                            )
+                        })}
                         {loading && (
                             <div className="flex items-center gap-2 text-slate-400 text-sm mr-8">
                                 <Loader2 className="h-4 w-4 animate-spin" />
