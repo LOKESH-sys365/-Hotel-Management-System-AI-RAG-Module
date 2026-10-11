@@ -154,21 +154,7 @@ public class ChatOrchestrationService {
     }
 
 
-    private HikariDataSource context;
-    String finalContext = context.toString();
 
-        String prompt = """
-                You are an AI customer support assistant for our hotel company.
-
-                Answer the customer using ONLY the company information provided below.
-
-                If the answer is not available in the provided information, say:
-                "I don't have that information in the company documents."
-                
-                COMPANMY INFORMATION
-                %s
-                
-                """.formatted(finalContext);
 
 
     }
