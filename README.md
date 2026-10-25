@@ -1,4 +1,4 @@
-# 🏨 Hotel Management System + AI/RAG Module
+#Hotel Management System + AI/RAG Module
 
 A full-stack hotel management application built with **Spring Boot** (backend) and **React + Vite** (frontend). It supports JWT-based authentication and provides CRUD operations for Rooms, Customers, Bookings, and Spa services through a REST API — plus a working **Retrieval-Augmented Generation (RAG) chat assistant** backed by a dual-datasource architecture (MySQL + PostgreSQL/pgvector).
 
